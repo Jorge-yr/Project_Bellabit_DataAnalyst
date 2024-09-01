@@ -1,0 +1,480 @@
+---
+title: "Bellabeat_project"
+author: "Jorge Ramírez"
+date: "2024-08-26"
+output:
+  pdf_document: default
+  html_document: default
+toc: true
+theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Proyecto de Análisis para Bellabeat (Curso Análisis de Datos de Google)
+
+![Imagen propiedad de Bellabeat](images\Bellabeat_head.png)
+
+Bellabeat representa más que una marca; Es un testimonio del empoderamiento de las mujeres a través de la tecnología. Para mí, se trata de crear un futuro en el que el bienestar se integre a la perfección en todos los aspectos de nuestras vidas.
+
+![Productos que vendemos](images\What_we_do.png)
+
+Somos una marca, a la vanguardia de la tecnología dedicada activamente a la salud y multipremiada.
+
+
+
+# 1 – Tarea Empresarial:
+
+Concentrarnos en uno de los productos de Bellabeat y analizar los datos de los dispositivos inteligentes para conocer el uso que hacen los consumidores de sus dispositivos inteligentes. Saber cómo usan los consumidores los dispositivos inteligentes que no son de Bellabeat, para nos recomendó usar entre una de las fuentes datos de una investigación realizada por Fitbit.
+
+<https://www.kaggle.com/arashnic/fitbit>
+
+# Metadatos:
+
+Este conjunto de datos fue generado personas que respondieron a través de encuesta distribuida por Amazon Mechanical Turk. Fecha: entre el 03.12.2016 y el 05.12.2016. Muestreo: Treinta usuarios elegibles de Fitbit dieron su consentimiento para el envío de datos de seguimiento personal. Datos: a nivel de minuto para la actividad física, la frecuencia cardíaca y el monitoreo del sueño. Los informes individuales se pueden analizar por ID de sesión de exportación (columna A) o marca de tiempo (columna B). La variación entre los resultados representa el uso de diferentes tipos de monitores Fitbit y los comportamientos/preferencias de seguimiento individuales.
+
+
+![Imagen de Fitbit](images\Fitbit.png)
+# Limitaciones de nuestro dataset: 
+Solo se observa a 30 personas, desconocemos las edades, el sexo y la ubicación geográfica, la ventana de observación son solo 2 meses. Los datos Si son Confiables y Originales, No son Integrales, No son actuales.
+
+
+
+# Inicio del trabajo:
+
+
+```{r Import each files of Fitbit, echo=FALSE}
+library(tidyverse)
+library(stats)
+library(ggplot2)
+library(patchwork)
+library(ggthemes)
+library(forcats)
+
+```
+
+# Exploración Extraccion y Limpieza de Set de Datos de Fitbit.
+
+```{r list files }
+# Obtener la lista de archivos en la carpeta
+archivos <- list.files("fitbit_data")
+
+# Obtener información detallada de cada archivo
+info_archivos <- file.info(archivos)
+
+# Extraer el nombre y el tamaño de los archivos
+nombre_y_tamaño <- data.frame(
+  Nombre = rownames(info_archivos),
+  Tamaño = info_archivos$size)
+
+print(nombre_y_tamaño)
+```
+
+```{r}
+caminata_minutos <- read.csv("fitbit_data/minuteStepsNarrow_merged.csv")
+sueno_minutos <- read.csv("fitbit_data/minuteSleep_merged.csv")
+metabolica_minutos <- read.csv("fitbit_data/minuteMETsNarrow_merged.csv")
+intensidad_minutos <- read.csv("fitbit_data/minuteIntensitiesNarrow_merged.csv")
+calorias_minuto <- read.csv("fitbit_data/minuteCaloriesNarrow_merged.csv")
+frecuencia_cardiaca <- read.csv("fitbit_data/heartrate_seconds_merged.csv")
+calorias_minuto <- read.csv("fitbit_data/minuteCaloriesNarrow_merged.csv")
+
+```
+
+## Primer trabajo exploratorio de los Dataframes más grandes:
+
+Hay dataframes con datos a nivel de minuto, se empieza por hacer un ETL de estos.
+
+```{r}
+print(" Estudio sueño ------------------- tamaño y columnas")
+size_sum(sueno_minutos)
+sapply(sueno_minutos, class)
+
+cat("\n Estudio caminata ------------------- tamaño y columnas \n")
+size_sum(caminata_minutos)
+sapply(caminata_minutos, class)
+
+cat("\n Estudio ejercicios de intensidad ------------------- tamaño y columnas \n")
+size_sum(intensidad_minutos)
+sapply(intensidad_minutos, class)
+
+cat("\n Estudio frecuencia cardiaca ------------------- tamaño y columnas \n")
+size_sum(frecuencia_cardiaca)
+sapply(frecuencia_cardiaca, class)
+
+
+cat("\n Estudio equivalencia metabólica ------------------- tamaño y columnas \n")
+size_sum(metabolica_minutos)
+sapply(metabolica_minutos, class)
+
+cat("\n Estudio calorias por minuto ------------------- tamaño y columnas \n")
+size_sum(calorias_minuto)
+sapply(calorias_minuto, class)
+
+```
+
+## Cuantas personas hay en cada data frame de datos por minuto?
+
+```{r Gráfico de PArticipantes en estudios por minuto}
+cat("Estudio de sueño: ", n_distinct(sueno_minutos$Id), "personas \n")
+cat("Medición de caminata: ", n_distinct(caminata_minutos$Id), "personas \n") 
+cat("Estudio de actividad intensa: ", n_distinct(intensidad_minutos$Id), " personas\n")
+cat("Estudio de actividad metabolica (METs): ", n_distinct(metabolica_minutos$Id), "personas \n")
+cat("Estudio de frecuencia cardiaca: ", n_distinct(frecuencia_cardiaca$Id), "personas \n")
+cat("Estudio de calorias por minuto: ", n_distinct(calorias_minuto$Id), "personas \n")
+```
+
+```{r Cantidad de sujetos participantes de los estudios por minuto:}
+
+estudios <- c("Est. Sueño", "Est. Caminatas", "Est. Frec Cardiaca", "Est. Equiv. Metabolica", "Est. Calorias" )
+participantes <- c(n_distinct(sueno_minutos$Id), n_distinct(caminata_minutos$Id), n_distinct(frecuencia_cardiaca$Id), n_distinct(metabolica_minutos$Id), n_distinct(calorias_minuto$Id))
+
+df_est1 <- data.frame(estudios, participantes)
+
+participantes_est_minuto <- ggplot(data = df_est1, aes(x=estudios, y=participantes)) + geom_bar(stat = "identity") + labs(title = "Participantes por cada estudio: ") + geom_text(aes(label = participantes), vjust = 2, colour = "white")
+
+
+participantes_est_minuto
+```
+
+## Primer resultado exploratorio
+
+Con esta infomación se decide descartar el estudio de Frecuencia cardiaca, por riesgo de sesgo que significa esta cantidad de muestras. Y se estudiará el resto de los estudios. El estudio del sueño se harán algunas revisiones para agregar o descartar.
+
+```{r join de los dataframes}
+# se procede a unir los Dataframes
+
+df_actividad_largo = full_join(caminata_minutos, intensidad_minutos, by=c("Id", "ActivityMinute"))
+df_actividad_largo = full_join(df_actividad_largo, metabolica_minutos, by=c("Id", "ActivityMinute"))
+df_actividad_largo = full_join(df_actividad_largo, calorias_minuto, by=c("Id", "ActivityMinute"))
+
+str(df_actividad_largo)
+
+```
+
+```{r}
+# Contar los NA por columna
+na_por_columna <- sapply(df_actividad_largo, function(x) sum(is.na(x)))
+
+# Mostrar el resultado
+print("Ver si tengo valores nulo en alguna columna")
+print(na_por_columna)
+```
+
+```{r, echo=FALSE}
+
+library(lubridate)
+
+```
+
+```{r}
+# cambio el formato de fecha
+
+df_actividad_largo$ActivityMinute = as.POSIXct(df_actividad_largo$ActivityMinute, format="%m/%d/%Y %I:%M:%S  %p", tz = "UTC")
+print(head(df_actividad_largo))
+
+df_actividad_largo$Time <- format(df_actividad_largo$ActivityMinute, format = "%H")
+df_actividad_largo$Date <- format(df_actividad_largo$ActivityMinute, format = "%Y/%m/%d")
+```
+
+```{r}
+
+df_actividad_largo$Time <- as.integer(df_actividad_largo$Time)
+
+#separate(df_actividad_largo, ActivityMinute, into = c("Date", "Time"), sep = " ")
+
+summary(df_actividad_largo)
+```
+
+```{r}
+head(df_actividad_largo)
+
+```
+
+## Actividad diaria de los participantes.
+
+```{r}
+actividad_x_fecha <- df_actividad_largo %>% group_by(Date) %>% 
+  summarise( Intensity = mean(Intensity),
+             Steps = mean(Steps),
+             METs = mean(METs),
+             Calories = mean(Calories))
+
+actividad_x_fecha1 <-  actividad_x_fecha %>% ggplot(., aes(x= Date, y= Intensity)) + geom_bar(stat = "identity", color = "green", fill = "white") + labs(title = "Actividad Intesa promedio a los largo del estudio: ") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+actividad_x_hora <- df_actividad_largo %>% group_by(Time) %>% 
+  summarise( Intensity = mean(Intensity),
+             Steps = mean(Steps),
+             METs = mean(METs),
+             Calories = mean(Calories))
+
+actividad_x_hora1 <-  actividad_x_hora %>% ggplot( aes(x= Time, y= Intensity)) + geom_bar(stat = "identity", color = "purple", fill = "white") + labs(title = "Actividad a lo largo del día: ")
+      
+actividad_x_fecha1 / actividad_x_hora1
+```
+
+```{r}
+actividad_x_hora2 <- df_actividad_largo %>% group_by(Time, Id) %>% 
+  summarise( Intensity = mean(Intensity, na.rm = TRUE), .groups = "drop")
+
+actividad_x_hora3 <-  actividad_x_hora2 %>% ggplot( aes(x= Time, y= Intensity, color= Id)) + geom_bar(stat = "identity", color = "purple", fill = "white") + facet_wrap(~Id) +labs(title = "Actividad a los largo del día por ID: ")
+
+actividad_x_hora3
+```
+
+Con este grafico vemos la intensidad de actividad que tiene ID por día.
+
+## Vemos la cantidad de días que participaron los diferentes ID:
+
+```{r}
+
+dias_participa <- df_actividad_largo %>% select(., Id, Date) %>% unique()
+
+table(dias_participa$Id)
+```
+
+## Correlatividad de variables
+
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+
+correlatividad_act <- actividad_x_fecha %>% select(., Steps, Intensity, METs, Calories) %>% cor() %>% corrplot(., method = "number")
+
+correlatividad_act
+```
+
+Todas las variables están estrechamente correlacionadas.
+
+## Teoria, calcular las horas de Sueño.
+
+Creo que si el dispositivo en todo momento envía un status, se puede calcular las horas de sueño de los participantes que falta, por diferencia (minutos al dia - minutos activo = minutos de sueño) para eso hago el siguiente analisís:
+
+```{r}
+tail(sueno_minutos)
+```
+
+```{r}
+# prueba sueño
+summary(sueno_minutos)
+
+```
+
+```{r}
+# creo un datafame nuevo para no insertar NA en el original df_actividad_largo
+sueno_minutos <- sueno_minutos %>% rename(.,ActivityMinute = "date")
+
+sueno_minutos$ActivityMinute = as.POSIXct(sueno_minutos$ActivityMinute, format="%m/%d/%Y %I:%M:%S %p", tz = "UTC")
+```
+
+```{r}
+ver_sueno <- full_join(df_actividad_largo, sueno_minutos, by = c("Id", "ActivityMinute"))
+print("Si hay un registro por minuto de cada usuario deberiamos tener la misma cantidad de repeticiones por usuario")
+
+table(ver_sueno$Id)
+
+```
+
+la mayoria de las personas tienen alrededor de 46.000 registros lo que si dividimos por la cantidad de minutos que tiene el día 1440 minutos, participaron 32 días.
+
+### Se descarta la teoria de poder agregar el valor de los minutos de sueño, debido a que los números son muy dispares.
+
+Continuo con el analisis explorario para ver la actividad por día de los sujetos. hago un gráfico con las actividades
+
+Se refresca los archivos dentro de nuestro dataset.
+```{r se refresca los archivos}
+print(nombre_y_tamaño)
+
+```
+
+Veo el final del dataframe para ver su estructura
+
+```{r}
+actividad_diaria <- read.csv("fitbit_data/dailyActivity_merged.csv")
+calorias_hora <- read.csv("fitbit_data/hourlyCalories_merged.csv")
+intensidad_hora <- read.csv("fitbit_data/hourlyIntensities_merged.csv")
+caminata_hora <- read.csv("fitbit_data/hourlySteps_merged.csv")
+
+print(tail(actividad_diaria))
+```
+
+Realizo un resumen de los valores:
+
+```{r resumen de actividad diaria}
+summary(actividad_diaria)
+```
+
+Reviso las estructura de los ultimos archivos.
+
+```{r}
+
+print(" Estudio calorias hora ------------------- tamaño y columnas")
+size_sum(calorias_hora)
+sapply(calorias_hora, class)
+
+cat("\n Estudio caminata hora ------------------- tamaño y columnas \n")
+size_sum(caminata_hora)
+sapply(caminata_hora, class)
+
+cat("\n Estudio ejercicios intensidad hora ------------------- tamaño y columnas \n")
+size_sum(intensidad_hora)
+sapply(intensidad_hora, class)
+```
+
+# Segmentar o Clusterizar perfiles.
+
+El Dataframe más completo es el de Actividad Diaria.
+
+Vamos a clasterizar los ID por comportamiento:
+
+```{r columnas de actividad diaria}
+names(actividad_diaria)
+```
+
+```{r}
+df_actividad_x_id <- actividad_diaria %>% group_by(Id)  %>%
+  summarise(
+    MinutosMuyActivo = mean(VeryActiveMinutes),
+    MinutosPocaAct = mean(LightlyActiveMinutes),
+    MinutoSedentario = mean(SedentaryMinutes)
+  )
+
+df_actividad_x_id$Id <- as.factor(df_actividad_x_id$Id)
+
+str(df_actividad_x_id)
+```
+
+```{r}
+# Contar los NA por columna
+na_por_columna1 <- sapply(df_actividad_x_id , function(x) sum(is.na(x)))
+
+# Mostrar el resultado
+print("Ver si tengo valores nulo en alguna columna")
+print(na_por_columna1)
+```
+Descripción de cantidad de días que cada sujeto realizo cada tipo de actividad.
+```{r}
+df_cantidadDiaAct <- actividad_diaria %>% group_by(Id)  %>%
+  summarise(
+    MinutosMuyActivo = sum(VeryActiveMinutes != 0, na.rm = TRUE),
+    MinutosPocaAct = sum(LightlyActiveMinutes != 0, na.rm = TRUE),
+    MinutoSedentario = sum(SedentaryMinutes != 0, na.rm = TRUE),
+  )
+
+df_cantidadDiaAct$Id <- as.factor(df_cantidadDiaAct$Id)
+
+str(df_cantidadDiaAct)
+```
+
+Se clusteriza los perfiles por el promedio de actividad diario de cada participante del estudio.
+
+```{r paquetes de cluster, echo:FALSE }
+#install.packages("cluster")
+library(cluster)
+#install.packages("factoextra")
+library(factoextra)
+
+```
+
+```{r se clusteriza, echo:FALSE}
+df <- df_actividad_x_id %>%
+  mutate(across(c(MinutosMuyActivo, MinutosPocaAct, MinutoSedentario), scale))
+
+set.seed(123)  # Para reproducibilidad
+kmeans_result <- kmeans(df %>% select(MinutosMuyActivo, MinutosPocaAct, MinutoSedentario), centers = 3)  # Cambia '3' por el número de clusters deseado
+
+df$cluster <- kmeans_result$cluster
+
+```
+
+```{r gráfico de puntos 1}
+ggplot(df, aes(x = MinutosMuyActivo, y= MinutosPocaAct, color = as.factor(cluster))) +
+  geom_point(aes(size = 2)) +
+  labs(color = "Cluster") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Ver metricas por metodo del Codo
+Justifican la cantidad de clusters seleccionados.
+
+```{r metricas que justifican la cantidad de clusters}
+# Ver metricas por metodo del Codo
+sil <- silhouette(kmeans_result$cluster, dist(df))
+
+fviz_nbclust(df, kmeans, method = "wss") +
+  labs(title = "Número óptimo de Clusters:", subtitle = "Elbow method")
+```
+## cantidad de sujetos por cluster:
+Más de la mitad de los sujetos están en el cluster 1.
+```{r}
+ggplot(df, aes(x=cluster, color = "cluster")) + geom_bar() + 
+  
+  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5) +
+  theme_minimal()
+
+```
+
+```{r, echo:FALSE}
+df_1 <- df_actividad_x_id %>%
+  mutate(across(c(MinutosMuyActivo, MinutosPocaAct, MinutoSedentario), scale))
+
+set.seed(123)  # Para reproducibilidad
+kmeans_result2 <- kmeans(df_1  %>% select(MinutosMuyActivo, MinutosPocaAct, MinutoSedentario), centers = 3) #Cambia '3' por el número de clusters deseado
+
+df_1$cluster <- kmeans_result2$cluster
+
+```
+
+```{r}
+ggplot(df_1, aes(x = Id,y= MinutosMuyActivo, color = as.factor(cluster))) +
+  geom_point(aes(size = 2)) +
+  labs(color = "Cluster") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Clusters descripción
+
+Tamaño de los cluster:
+
+```{r}
+ggplot(df_1, aes(x=cluster, color = "cluster")) + geom_bar() + labs(title = "Tamaño de los 3 clusters") + theme_classic()
+```
+
+```{r}
+df_5 <- df %>% select( Id, cluster)
+df_actividad_plot <- left_join(df_actividad_x_id, df_5, by = "Id")
+names(df_actividad_plot)
+```
+
+Comparacion entre clusters por actividad:
+
+```{r comparacion entre cluster por actividad}
+clusters_dif <- df_actividad_plot %>% group_by(., cluster) %>% 
+  summarise(
+    Act_intensa_media = mean(MinutosMuyActivo),
+    Act_moderada_media = mean(MinutosPocaAct),
+    Act_sedentaria_media = mean(MinutoSedentario)
+)
+
+clusters_dif
+```
+
+```{r}
+# Creas un gráfico de área con las 3 columnas
+ggplot(clusters_dif, aes(x = cluster)) + 
+  geom_area(aes(y = Act_intensa_media, fill = "Act_intensa_media"), alpha = 0.9, position = "stack") +  
+  geom_area(aes(y = Act_moderada_media, fill = "Act_moderada_media"), alpha = 0.4, position = "stack") + 
+  geom_area(aes(y = Act_sedentaria_media, fill = "Act_sedentaria_media"), alpha = 0.3, position = "stack") + 
+  labs(title = "Gráfico de actividad por cluster", x = "Cluster", y = "Actividad") + 
+  theme_classic()
+
+
+```
+
+# Conclusiones finales:
+
+-   El estudio de FitBit es un buen comienzo pero necesitariamos ampliar la información, la información más confiable es la creada de primera fuente, la que nosotros podemos recabar a partir de nuestros dispositivos con nuestros usuarios, sería bueno desarrollar esa alternativa.
+
+-   Se recomienda poner mayor foco en el cluster 1 es el cluster de Mayor cantidad de personas. Este cluster tiene un comportamiento donde mayormente predomina la actividad sedentaria, la actividad intensa es casi nula, la actividad moderada esta dentro del promedio respecto de toda la muestra.
+
+

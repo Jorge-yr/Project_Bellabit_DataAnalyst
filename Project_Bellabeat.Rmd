@@ -1,0 +1,125 @@
+---
+title: "Bellabeat_project"
+author: "Jorge Ramírez"
+date: "2024-08-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Repaso de Bellabeat
+
+```{r Import each files of Fitbit, echo=FALSE}
+library(tidyverse)
+library(stats)
+library(ggplot2)
+
+```
+
+```{r list files }
+# Obtener la lista de archivos en la carpeta
+archivos <- list.files("fitbit_data")
+
+# Obtener información detallada de cada archivo
+info_archivos <- file.info(archivos)
+
+# Extraer el nombre y el tamaño de los archivos
+nombre_y_tamaño <- data.frame(
+  Nombre = rownames(info_archivos),
+  Tamaño = info_archivos$size)
+
+print(nombre_y_tamaño)
+```
+
+
+
+```{r}
+caminata_minutos <- read.csv("fitbit_data/minuteStepsNarrow_merged.csv")
+sueno_minutos <- read.csv("fitbit_data/minuteSleep_merged.csv")
+metabolica_minutos <- read.csv("fitbit_data/minuteMETsNarrow_merged.csv")
+intensidad_minutos <- read.csv("fitbit_data/minuteIntensitiesNarrow_merged.csv")
+calorias_minuto <- read.csv("fitbit_data/minuteCaloriesNarrow_merged.csv")
+frecuencia_cardiaca <- read.csv("fitbit_data/heartrate_seconds_merged.csv")
+
+```
+
+## Exploramos los Dataframes más grandes
+
+```{r}
+print(" sueño -------------------------------------")
+str(sueno_minutos)
+
+print(" caminata -------------------------------------")
+str(caminata_minutos)
+
+print(" intensidad -------------------------------------")
+str(intensidad_minutos)
+
+print(" frecuencia cardiaca -------------------------------------")
+str(frecuencia_cardiaca)
+
+
+print(" metabolic equivalent -------------------------------------")
+str(metabolica_minutos)
+```
+## Quiero ver cuantas personas hay en cada data frame
+```{r}
+cat("Estudio de sueño: ", n_distinct(sueno_minutos$Id), "personas \n")
+cat("Medición de caminata: ", n_distinct(caminata_minutos$Id), "personas \n") 
+cat("Estudio de actividad intensa: ", n_distinct(intensidad_minutos$Id), " personas\n")
+cat("Estudio de actividad metabolica (METs): ", n_distinct(metabolica_minutos$Id), "personas \n")
+cat("Estudio de frecuencia cardiaca: ", n_distinct(frecuencia_cardiaca$Id), "personas \n")
+
+```
+Con esta infomación se decide descartar el estudio de Frecuencia cardiaca, por riesgo de sesgo que significa esta cantidad de muestras.
+Y se estudiará el resto de 
+
+```{r}
+# se procede a unir los Dataframes
+
+df_actividad_largo = left_join(caminata_minutos, intensidad_minutos, by=c("Id", "ActivityMinute"))
+df_actividad_largo = left_join(df_actividad_largo, metabolica_minutos, by=c("Id", "ActivityMinute"))
+
+# cambio el formato de fecha
+
+df_actividad_largo$ActivityMinute = as.POSIXct(df_actividad_largo$ActivityMinute, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+
+df_actividad_largo$time <- format(df_actividad_largo$ActivityMinute, format = "%H")
+df_actividad_largo$date <- format(df_actividad_largo$ActivityMinute, format = "%m/%d/%y")
+
+df_actividad_largo$time <- as.integer(df_actividad_largo$time)
+
+#separate(df_actividad_largo, ActivityMinute, into = c("Date", "Time"), sep = " ")
+
+
+
+summary(df_actividad_largo)
+```
+```{r}
+unique(df_actividad_largo$time)
+```
+
+
+
